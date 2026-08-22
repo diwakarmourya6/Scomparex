@@ -26,7 +26,7 @@ export const AdminDashboard: React.FC = () => {
           setBrands(data);
         }
       } catch (error) {
-        showToast('Failed to load data', 'error');
+        showToast('Failed to load data', 'warning');
       } finally {
         setIsLoading(false);
       }
@@ -51,7 +51,7 @@ export const AdminDashboard: React.FC = () => {
       setSmartphones(prev => prev.filter(p => p.id !== slug));
       showToast('Smartphone deleted', 'success');
     } catch (error) {
-      showToast('Failed to delete smartphone', 'error');
+      showToast('Failed to delete smartphone', 'warning');
     }
   };
 
@@ -69,7 +69,7 @@ export const AdminDashboard: React.FC = () => {
       setBrands(prev => prev.filter(b => b.slug !== slug));
       showToast('Brand deleted', 'success');
     } catch (error) {
-      showToast('Failed to delete brand', 'error');
+      showToast('Failed to delete brand', 'warning');
     }
   };
 
