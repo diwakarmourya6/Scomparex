@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { apiClient } from '../api/client';
+import { apiClient, API_BASE_URL } from '../api/client';
 import { motion } from 'motion/react';
 import { Trash2, Smartphone, LayoutGrid, Plus } from 'lucide-react';
 import { useCompare } from '../context/CompareContext';
@@ -41,7 +41,7 @@ export const AdminDashboard: React.FC = () => {
     if (!confirm('Are you sure you want to delete this smartphone?')) return;
     
     try {
-      const response = await fetch(`http://${window.location.hostname}:5000/api/smartphones/${slug}`, {
+      const response = await fetch(`${API_BASE_URL}/smartphones/${slug}`, {
         method: 'DELETE',
         headers: apiClient.getHeaders(token || undefined)
       });
@@ -59,7 +59,7 @@ export const AdminDashboard: React.FC = () => {
     if (!confirm('Are you sure you want to delete this brand?')) return;
     
     try {
-      const response = await fetch(`http://${window.location.hostname}:5000/api/brands/${slug}`, {
+      const response = await fetch(`${API_BASE_URL}/brands/${slug}`, {
         method: 'DELETE',
         headers: apiClient.getHeaders(token || undefined)
       });
