@@ -1,0 +1,6 @@
+{
+  "name": "CompareX",
+  "description": "Modern smartphone comparison platform. Compare specifications, prices, features and performance side-by-side to make better decisions.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

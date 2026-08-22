@@ -1,0 +1,35 @@
+{
+  "name": "@comparex/backend",
+  "version": "1.0.0",
+  "description": "CompareX Smartphone Comparison Backend API",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "migrate": "node database/migrations/001_create_tables.js",
+    "seed": "node database/seeds/001_seed_smartphones.js",
+    "setup-db": "node database/migrations/001_create_tables.js && node database/seeds/001_seed_smartphones.js",
+    "test": "jest"
+  },
+  "keywords": [
+    "comparex",
+    "smartphones",
+    "comparison",
+    "api"
+  ],
+  "license": "ISC",
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "helmet": "^8.0.0",
+    "jsonwebtoken": "^9.0.3",
+    "pg": "^8.13.1",
+    "joi": "^17.13.3"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "supertest": "^7.0.0"
+  }
+}
