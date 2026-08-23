@@ -57,6 +57,52 @@ function transformSmartphoneRow(row) {
 }
 
 /**
+ * Transform a flat DB smartphone row into the frontend Smartphone shape for list view.
+ * Omits heavy fields like description, pros, cons, etc.
+ */
+function transformSmartphoneListRow(row) {
+  return {
+    id: row.slug,
+    name: row.name,
+    brand: row.brand_name,
+    model: row.model,
+    price: row.price,
+    originalPrice: row.original_price,
+    rating: parseFloat(row.rating),
+    reviewCount: row.review_count,
+    image: row.image,
+    shortDescription: row.short_description,
+    availability: row.availability,
+    releaseDate: row.release_date,
+    bestFor: row.best_for,
+    scores: {
+      overall: row.score_overall,
+      performance: row.score_performance,
+      camera: row.score_camera,
+      battery: row.score_battery,
+      display: row.score_display,
+      value: row.score_value,
+    },
+    performance: {
+      processor: row.processor,
+      ram: row.ram,
+      storage: row.storage
+    },
+    camera: {
+      mainSensorMP: row.main_sensor_mp
+    },
+    battery: {
+      capacity: row.battery_capacity,
+      chargingSpeed: row.charging_speed
+    },
+    display: {
+      refreshRate: row.refresh_rate,
+      size: row.display_size
+    }
+  };
+}
+
+/**
  * Transform a flat DB spec row into the frontend's nested spec shape.
  */
 function transformSpecRow(spec) {
@@ -135,7 +181,7 @@ async function getSmartphones(options) {
   const result = await smartphoneModel.findAll(options);
 
   return {
-    smartphones: result.rows.map(transformSmartphoneRow),
+    smartphones: result.rows.map(transformSmartphoneListRow),
     pagination: {
       page: result.page,
       limit: result.limit,

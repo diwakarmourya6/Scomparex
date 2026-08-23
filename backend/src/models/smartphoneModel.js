@@ -154,12 +154,10 @@ async function findAll(options = {}) {
   const dataQuery = `
     SELECT
       s.id, s.slug, s.name, s.model, s.price, s.original_price,
-      s.rating, s.review_count, s.image, s.gallery_images,
-      s.description, s.short_description, s.highlights,
-      s.availability, s.release_date, s.best_for,
+      s.rating, s.review_count, s.image,
+      s.short_description, s.availability, s.release_date, s.best_for,
       s.score_overall, s.score_performance, s.score_camera,
       s.score_battery, s.score_display, s.score_value,
-      s.pros, s.cons, s.offers,
       b.name AS brand_name, b.slug AS brand_slug,
       sp.processor, sp.ram, sp.storage, sp.main_sensor_mp, 
       sp.battery_capacity, sp.charging_speed, sp.refresh_rate, sp.display_size

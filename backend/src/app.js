@@ -45,10 +45,12 @@ app.use((req, _res, next) => {
   next();
 });
 
+const path = require('path');
+
 // ---------------------------------------------------------------------------
 // Routes
 // ---------------------------------------------------------------------------
-app.get('/', (req, res) => {
+app.get('/api', (req, res) => {
   res.json({ message: 'Welcome to CompareX API', status: 'active' });
 });
 
@@ -58,8 +60,21 @@ app.use('/api/brands', brandRoutes);
 app.use('/api/smartphones', smartphoneRoutes);
 
 // ---------------------------------------------------------------------------
-// Error handling
+// Static Frontend Serving
 // ---------------------------------------------------------------------------
+app.use(express.static(path.join(__dirname, '../../frontend/dist')));
+
+// ---------------------------------------------------------------------------
+// Error handling & SPA Fallback
+// ---------------------------------------------------------------------------
+// SPA Fallback: send index.html for any unhandled non-API routes
+app.get('*', (req, res, next) => {
+  if (req.originalUrl.startsWith('/api')) {
+    return next(); // Let the API notFoundHandler handle it
+  }
+  res.sendFile(path.join(__dirname, '../../frontend/dist/index.html'));
+});
+
 app.use(notFoundHandler);
 app.use(errorHandler);
 

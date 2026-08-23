@@ -120,7 +120,7 @@ export default function App() {
     <ThemeProvider>
       <AuthProvider>
         <CompareProvider>
-          <div className="min-h-screen flex flex-col bg-slate-50/70 text-slate-900">
+          <div className="min-h-screen flex flex-col bg-slate-50/70 text-slate-900 overflow-x-hidden">
             {/* Navigation Bar */}
             <Navbar
               currentPath={currentPath}
