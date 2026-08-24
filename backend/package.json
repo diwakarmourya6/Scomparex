@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
+    "generate": "npx prisma generate",
     "seed:api": "node database/seeds/002_seed_from_api.js",
     "test": "jest"
   },
