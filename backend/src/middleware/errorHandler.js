@@ -14,10 +14,7 @@ function notFoundHandler(req, res, _next) {
 
 function errorHandler(err, _req, res, _next) {
   const status = err.status || err.statusCode || 500;
-  const message =
-    process.env.NODE_ENV === 'production' && status === 500
-      ? 'Internal Server Error'
-      : err.message || 'Something went wrong';
+  const message = err.message || 'Something went wrong';
 
   console.error(`[ERROR] ${status} — ${err.message}`);
   if (process.env.NODE_ENV !== 'production') {
