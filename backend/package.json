@@ -6,7 +6,7 @@
   "scripts": {
     "start": "npx prisma generate && node src/server.js",
     "dev": "node --watch src/server.js",
-    "build": "echo 'No build step for backend'",
+    "build": "npx prisma generate && cd ../frontend && npm run build",
     "generate": "npx prisma generate",
     "seed:api": "node database/seeds/002_seed_from_api.js",
     "test": "jest"

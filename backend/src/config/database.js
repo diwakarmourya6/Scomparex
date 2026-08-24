@@ -21,12 +21,23 @@ const prisma = new PrismaClient({ adapter });
  */
 async function testConnection() {
   try {
+    console.log('Testing DB connection...');
+    console.log('DATABASE_URL starts with:', connectionString ? connectionString.substring(0, 15) : 'UNDEFINED');
+    
+    if (!connectionString) {
+      console.error('DATABASE_URL is missing in environment!');
+      return false;
+    }
+
     // Simple query to verify connection
-    await prisma.$queryRaw`SELECT 1`;
+    await prisma.brand.count();
     console.log(`✅ Prisma PostgreSQL connected successfully.`);
     return true;
   } catch (err) {
-    console.error('❌ Prisma PostgreSQL connection failed:', err.message);
+    console.error('❌ Prisma PostgreSQL connection failed:', err);
+    console.error('Error name:', err.name);
+    console.error('Error message:', err.message);
+    if (err.clientVersion) console.error('Prisma version:', err.clientVersion);
     return false;
   }
 }
