@@ -9,8 +9,12 @@
     "testing"
   ],
   "scripts": {
+    "dev": "npm run dev -w frontend",
+    "build": "npm run build -w frontend",
+    "start": "npm start -w backend",
     "dev:frontend": "npm run dev -w frontend",
     "dev:backend": "npm run dev -w backend",
+    "start:backend": "npm start -w backend",
     "test": "npm run test --workspaces",
     "prepare": "node -e \"try { if (process.env.NODE_ENV !== 'production') require('child_process').execSync('husky', {stdio: 'inherit'}) } catch (e) {}\""
   },

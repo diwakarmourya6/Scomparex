@@ -22,7 +22,7 @@ interface ComparisonPageProps {
 }
 
 export const ComparisonPage: React.FC<ComparisonPageProps> = ({ onViewDetails, navigate }) => {
-  const { compareIds, comparePhones, removeFromCompare, clearCompare, openQuickPicker, addToCompare, showToast } = useCompare();
+  const { allPhones, compareIds, comparePhones, removeFromCompare, clearCompare, openQuickPicker, addToCompare, showToast } = useCompare();
 
   const comparedPhones: Smartphone[] = comparePhones;
 
@@ -33,20 +33,16 @@ export const ComparisonPage: React.FC<ComparisonPageProps> = ({ onViewDetails, n
     }
   };
 
-  const starterPresets = [
+  const starterPresets = allPhones.length >= 4 ? [
     {
-      name: 'iPhone 16 Pro Max vs Galaxy S25 Ultra',
-      ids: ['iphone-16-pro-max', 'samsung-galaxy-s25-ultra']
+      name: `${allPhones[0].name.split(' ')[0]} ${allPhones[0].name.split(' ')[1]} vs ${allPhones[1].name.split(' ')[0]} ${allPhones[1].name.split(' ')[1]}`,
+      ids: [allPhones[0].id, allPhones[1].id]
     },
     {
-      name: 'Snapdragon 8 Elite Faceoff (OnePlus 13 vs Xiaomi 15 Pro)',
-      ids: ['oneplus-13', 'xiaomi-15-pro']
-    },
-    {
-      name: 'Under ₹40,000 Sweetspot (Realme GT 6 vs Nothing Phone 2a+)',
-      ids: ['realme-gt-6', 'nothing-phone-2a-plus']
+      name: `${allPhones[2].name.split(' ')[0]} ${allPhones[2].name.split(' ')[1]} vs ${allPhones[3].name.split(' ')[0]} ${allPhones[3].name.split(' ')[1]}`,
+      ids: [allPhones[2].id, allPhones[3].id]
     }
-  ];
+  ] : [];
 
   const handleLoadPreset = (ids: string[]) => {
     clearCompare();

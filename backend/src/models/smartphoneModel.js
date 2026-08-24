@@ -1,8 +1,8 @@
 /**
- * Smartphone model — query helpers for the smartphones table.
+ * Smartphone model — query helpers for the smartphones table using Prisma.
  * Supports filtering, sorting, pagination, and full-spec joins.
  */
-const { pool } = require('../config/database');
+const { prisma } = require('../config/database');
 
 /**
  * Build a filtered, sorted, paginated smartphone query.
@@ -27,155 +27,158 @@ async function findAll(options = {}) {
     limit = 20,
   } = options;
 
-  const conditions = [];
-  const params = [];
-  let paramIndex = 1;
+  const where = {};
 
   // Search across name, brand, model, processor
   if (search && search.trim()) {
-    const searchParam = `%${search.trim().toLowerCase()}%`;
-    conditions.push(`(
-      LOWER(s.name) LIKE $${paramIndex}
-      OR LOWER(b.name) LIKE $${paramIndex}
-      OR LOWER(s.model) LIKE $${paramIndex}
-      OR LOWER(sp.processor) LIKE $${paramIndex}
-    )`);
-    params.push(searchParam);
-    paramIndex++;
+    const searchParam = search.trim();
+    where.OR = [
+      { name: { contains: searchParam, mode: 'insensitive' } },
+      { model: { contains: searchParam, mode: 'insensitive' } },
+      { brand: { name: { contains: searchParam, mode: 'insensitive' } } },
+      { specs: { processor: { contains: searchParam, mode: 'insensitive' } } },
+    ];
   }
 
   // Brand filter
   if (brands && brands.length > 0) {
-    const brandPlaceholders = brands.map((_, i) => `$${paramIndex + i}`);
-    conditions.push(`LOWER(b.name) IN (${brandPlaceholders.join(', ')})`);
-    brands.forEach(brand => params.push(brand.toLowerCase()));
-    paramIndex += brands.length;
+    where.brand = {
+      ...where.brand,
+      name: { in: brands, mode: 'insensitive' },
+    };
   }
 
   // Price range
-  if (minPrice != null) {
-    conditions.push(`s.price >= $${paramIndex}`);
-    params.push(minPrice);
-    paramIndex++;
-  }
-  if (maxPrice != null) {
-    conditions.push(`s.price <= $${paramIndex}`);
-    params.push(maxPrice);
-    paramIndex++;
-  }
-
-  // RAM filter
-  if (ram && ram.length > 0) {
-    const ramPlaceholders = ram.map((_, i) => `$${paramIndex + i}`);
-    conditions.push(`sp.ram IN (${ramPlaceholders.join(', ')})`);
-    ram.forEach(r => params.push(r));
-    paramIndex += ram.length;
-  }
-
-  // Storage filter
-  if (storage && storage.length > 0) {
-    const storagePlaceholders = storage.map((_, i) => `$${paramIndex + i}`);
-    conditions.push(`sp.storage IN (${storagePlaceholders.join(', ')})`);
-    storage.forEach(st => params.push(st));
-    paramIndex += storage.length;
-  }
-
-  // Refresh rate filter
-  if (refreshRates && refreshRates.length > 0) {
-    const rrPlaceholders = refreshRates.map((_, i) => `$${paramIndex + i}`);
-    conditions.push(`sp.refresh_rate IN (${rrPlaceholders.join(', ')})`);
-    refreshRates.forEach(rr => params.push(rr));
-    paramIndex += refreshRates.length;
-  }
-
-  // Battery minimum
-  if (batteryMin != null) {
-    conditions.push(`sp.battery_capacity >= $${paramIndex}`);
-    params.push(batteryMin);
-    paramIndex++;
-  }
-
-  // Camera minimum MP
-  if (cameraMinMP != null) {
-    conditions.push(`sp.main_sensor_mp >= $${paramIndex}`);
-    params.push(cameraMinMP);
-    paramIndex++;
-  }
-
-  // 5G only
-  if (fiveGOnly) {
-    conditions.push('sp.five_g = true');
+  if (minPrice != null || maxPrice != null) {
+    where.price = {};
+    if (minPrice != null) where.price.gte = minPrice;
+    if (maxPrice != null) where.price.lte = maxPrice;
   }
 
   // Minimum rating
   if (minRating != null) {
-    conditions.push(`s.rating >= $${paramIndex}`);
-    params.push(minRating);
-    paramIndex++;
+    where.rating = { gte: minRating };
   }
 
-  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+  // Spec filters
+  const specsWhere = {};
+  let hasSpecsFilter = false;
+
+  if (ram && ram.length > 0) {
+    specsWhere.ram = { in: ram };
+    hasSpecsFilter = true;
+  }
+  if (storage && storage.length > 0) {
+    specsWhere.storage = { in: storage };
+    hasSpecsFilter = true;
+  }
+  if (refreshRates && refreshRates.length > 0) {
+    specsWhere.refreshRate = { in: refreshRates };
+    hasSpecsFilter = true;
+  }
+  if (batteryMin != null) {
+    specsWhere.batteryCapacity = { gte: batteryMin };
+    hasSpecsFilter = true;
+  }
+  if (cameraMinMP != null) {
+    specsWhere.mainSensorMp = { gte: cameraMinMP };
+    hasSpecsFilter = true;
+  }
+  if (fiveGOnly) {
+    specsWhere.fiveG = true;
+    hasSpecsFilter = true;
+  }
+
+  if (hasSpecsFilter) {
+    if (where.OR && where.OR.some(c => c.specs)) {
+      // If we have an OR condition that uses specs (like search), we merge it carefully
+      where.specs = {
+        ...where.specs,
+        ...specsWhere
+      };
+    } else {
+      where.specs = specsWhere;
+    }
+  }
 
   // Sort
-  let orderClause;
+  let orderBy = [];
   switch (sort) {
     case 'price-asc':
-      orderClause = 'ORDER BY s.price ASC';
+      orderBy.push({ price: 'asc' });
       break;
     case 'price-desc':
-      orderClause = 'ORDER BY s.price DESC';
+      orderBy.push({ price: 'desc' });
       break;
     case 'rating-desc':
-      orderClause = 'ORDER BY s.rating DESC, s.review_count DESC';
+      orderBy.push({ rating: 'desc' });
+      orderBy.push({ reviewCount: 'desc' });
       break;
     case 'newest':
-      orderClause = 'ORDER BY s.created_at DESC';
+      orderBy.push({ createdAt: 'desc' });
       break;
     case 'popular':
-      orderClause = 'ORDER BY s.review_count DESC';
+      orderBy.push({ reviewCount: 'desc' });
       break;
     case 'relevance':
     default:
-      orderClause = 'ORDER BY s.score_overall DESC NULLS LAST, s.rating DESC';
+      orderBy.push({ scoreOverall: { sort: 'desc', nulls: 'last' } });
+      orderBy.push({ rating: 'desc' });
       break;
   }
 
-  // Count query
-  const countQuery = `
-    SELECT COUNT(*)::int AS total
-    FROM smartphones s
-    JOIN brands b ON s.brand_id = b.id
-    LEFT JOIN smartphone_specs sp ON sp.smartphone_id = s.id
-    ${whereClause}
-  `;
-
-  // Data query
   const offset = (page - 1) * limit;
-  const dataQuery = `
-    SELECT
-      s.id, s.slug, s.name, s.model, s.price, s.original_price,
-      s.rating, s.review_count, s.image,
-      s.short_description, s.availability, s.release_date, s.best_for,
-      s.score_overall, s.score_performance, s.score_camera,
-      s.score_battery, s.score_display, s.score_value,
-      b.name AS brand_name, b.slug AS brand_slug,
-      sp.processor, sp.ram, sp.storage, sp.main_sensor_mp, 
-      sp.battery_capacity, sp.charging_speed, sp.refresh_rate, sp.display_size
-    FROM smartphones s
-    JOIN brands b ON s.brand_id = b.id
-    LEFT JOIN smartphone_specs sp ON sp.smartphone_id = s.id
-    ${whereClause}
-    ${orderClause}
-    LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
-  `;
 
-  const countResult = await pool.query(countQuery, params);
-  const totalCount = countResult.rows[0].total;
+  // Run count and data fetch in parallel
+  const [totalCount, smartphones] = await prisma.$transaction([
+    prisma.smartphone.count({ where }),
+    prisma.smartphone.findMany({
+      where,
+      orderBy,
+      skip: offset,
+      take: limit,
+      include: {
+        brand: true,
+        specs: true,
+      },
+    }),
+  ]);
 
-  const dataResult = await pool.query(dataQuery, [...params, limit, offset]);
+  // Map to the expected row format
+  const rows = smartphones.map(s => ({
+    id: s.id,
+    slug: s.slug,
+    name: s.name,
+    model: s.model,
+    price: s.price,
+    original_price: s.originalPrice,
+    rating: s.rating ? parseFloat(s.rating) : 0,
+    review_count: s.reviewCount,
+    image: s.image,
+    short_description: s.shortDescription,
+    availability: s.availability,
+    release_date: s.releaseDate,
+    best_for: s.bestFor,
+    score_overall: s.scoreOverall,
+    score_performance: s.scorePerformance,
+    score_camera: s.scoreCamera,
+    score_battery: s.scoreBattery,
+    score_display: s.scoreDisplay,
+    score_value: s.scoreValue,
+    brand_name: s.brand.name,
+    brand_slug: s.brand.slug,
+    processor: s.specs?.processor,
+    ram: s.specs?.ram,
+    storage: s.specs?.storage,
+    main_sensor_mp: s.specs?.mainSensorMp,
+    battery_capacity: s.specs?.batteryCapacity,
+    charging_speed: s.specs?.chargingSpeed,
+    refresh_rate: s.specs?.refreshRate,
+    display_size: s.specs?.displaySize,
+  }));
 
   return {
-    rows: dataResult.rows,
+    rows,
     totalCount,
     page,
     limit,
@@ -187,26 +190,58 @@ async function findAll(options = {}) {
  * Find a single smartphone by its numeric DB id.
  */
 async function findById(id) {
-  const result = await pool.query(`
-    SELECT s.*, b.name AS brand_name, b.slug AS brand_slug
-    FROM smartphones s
-    JOIN brands b ON s.brand_id = b.id
-    WHERE s.id = $1
-  `, [id]);
-  return result.rows[0] || null;
+  const s = await prisma.smartphone.findUnique({
+    where: { id: parseInt(id, 10) },
+    include: { brand: true },
+  });
+  if (!s) return null;
+  
+  return {
+    ...s,
+    original_price: s.originalPrice,
+    review_count: s.reviewCount,
+    gallery_images: s.galleryImages,
+    short_description: s.shortDescription,
+    release_date: s.releaseDate,
+    best_for: s.bestFor,
+    score_overall: s.scoreOverall,
+    score_performance: s.scorePerformance,
+    score_camera: s.scoreCamera,
+    score_battery: s.scoreBattery,
+    score_display: s.scoreDisplay,
+    score_value: s.scoreValue,
+    brand_name: s.brand.name,
+    brand_slug: s.brand.slug,
+  };
 }
 
 /**
  * Find a single smartphone by its slug.
  */
 async function findBySlug(slug) {
-  const result = await pool.query(`
-    SELECT s.*, b.name AS brand_name, b.slug AS brand_slug
-    FROM smartphones s
-    JOIN brands b ON s.brand_id = b.id
-    WHERE s.slug = $1
-  `, [slug]);
-  return result.rows[0] || null;
+  const s = await prisma.smartphone.findUnique({
+    where: { slug },
+    include: { brand: true },
+  });
+  if (!s) return null;
+  
+  return {
+    ...s,
+    original_price: s.originalPrice,
+    review_count: s.reviewCount,
+    gallery_images: s.galleryImages,
+    short_description: s.shortDescription,
+    release_date: s.releaseDate,
+    best_for: s.bestFor,
+    score_overall: s.scoreOverall,
+    score_performance: s.scorePerformance,
+    score_camera: s.scoreCamera,
+    score_battery: s.scoreBattery,
+    score_display: s.scoreDisplay,
+    score_value: s.scoreValue,
+    brand_name: s.brand.name,
+    brand_slug: s.brand.slug,
+  };
 }
 
 /**
@@ -215,14 +250,28 @@ async function findBySlug(slug) {
 async function findBySlugs(slugs) {
   if (!slugs || slugs.length === 0) return [];
 
-  const placeholders = slugs.map((_, i) => `$${i + 1}`).join(', ');
-  const result = await pool.query(`
-    SELECT s.*, b.name AS brand_name, b.slug AS brand_slug
-    FROM smartphones s
-    JOIN brands b ON s.brand_id = b.id
-    WHERE s.slug IN (${placeholders})
-  `, slugs);
-  return result.rows;
+  const smartphones = await prisma.smartphone.findMany({
+    where: { slug: { in: slugs } },
+    include: { brand: true },
+  });
+
+  return smartphones.map(s => ({
+    ...s,
+    original_price: s.originalPrice,
+    review_count: s.reviewCount,
+    gallery_images: s.galleryImages,
+    short_description: s.shortDescription,
+    release_date: s.releaseDate,
+    best_for: s.bestFor,
+    score_overall: s.scoreOverall,
+    score_performance: s.scorePerformance,
+    score_camera: s.scoreCamera,
+    score_battery: s.scoreBattery,
+    score_display: s.scoreDisplay,
+    score_value: s.scoreValue,
+    brand_name: s.brand.name,
+    brand_slug: s.brand.slug,
+  }));
 }
 
 module.exports = { findAll, findById, findBySlug, findBySlugs };

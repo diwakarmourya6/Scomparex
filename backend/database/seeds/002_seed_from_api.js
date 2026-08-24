@@ -3,7 +3,7 @@
  */
 const path = require('path');
 require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
-const { pool } = require('../../src/config/database');
+const { prisma } = require('../../src/config/database');
 
 const API_HOST = 'real-time-amazon-data.p.rapidapi.com';
 const API_URL = `https://${API_HOST}/search?query=smartphones&page=1&country=IN`;
@@ -31,49 +31,72 @@ function extractBrand(title) {
 }
 
 async function seedFromAPI() {
-  const client = await pool.connect();
-
   try {
     const apiKey = process.env.RAPIDAPI_KEY;
     if (!apiKey) {
       throw new Error("Missing RAPIDAPI_KEY in .env file!");
     }
 
-    console.log(`\n🌐 Fetching live Amazon data from: ${API_HOST}`);
+    console.log(`\n🌐 Fetching live Amazon data from: ${API_HOST} per brand`);
     
-    // 1. Fetch data from the API
-    const response = await fetch(API_URL, {
-      method: 'GET',
-      headers: {
-        'x-rapidapi-key': apiKey,
-        'x-rapidapi-host': API_HOST
-      }
-    });
+    let allProducts = [];
+    
+    const targetBrands = ['Apple', 'Samsung', 'OnePlus', 'Xiaomi', 'Redmi', 'Realme', 'vivo', 'OPPO', 'Motorola', 'Poco', 'iQOO'];
+    
+    for (const brand of targetBrands) {
+      console.log(`Fetching top 10 smartphones for ${brand}...`);
+      
+      try {
+        const response = await fetch(`https://${API_HOST}/search?query=${brand} smartphones&page=1&country=IN`, {
+          method: 'GET',
+          headers: {
+            'x-rapidapi-key': apiKey,
+            'x-rapidapi-host': API_HOST
+          }
+        });
 
-    if (!response.ok) {
-      const errText = await response.text();
-      throw new Error(`API returned status: ${response.status} - ${errText}`);
+        if (!response.ok) {
+          console.warn(`⚠️ API returned status: ${response.status} for ${brand}. Skipping.`);
+          continue;
+        }
+        
+        const data = await response.json();
+        const products = (data.data && data.data.products) ? data.data.products : (data.products || []);
+        
+        if (products.length === 0) {
+          console.log(`  No products found for ${brand}.`);
+          continue;
+        }
+        
+        // Filter out non-smartphones (basic check) and get up to 10
+        const validProducts = products.filter(p => {
+          const title = (p.product_title || p.title || '').toLowerCase();
+          return title.includes(brand.toLowerCase());
+        }).slice(0, 10);
+        
+        console.log(`  Found ${validProducts.length} smartphones for ${brand}.`);
+        allProducts = allProducts.concat(validProducts);
+        
+      } catch (err) {
+        console.warn(`⚠️ Error fetching ${brand}:`, err.message);
+      }
     }
     
-    const data = await response.json();
-    
-    // Real-Time Amazon Data usually returns results in data.products
-    const products = (data.data && data.data.products) ? data.data.products : (data.products || []);
-    
-    if (products.length === 0) {
-      console.log('No products found in the API response. Check if you have sufficient API quota.');
+    if (allProducts.length === 0) {
+      console.log('No products found in the API responses. Check if you have sufficient API quota.');
       return;
     }
     
-    console.log(`✅ Received ${products.length} Amazon products.`);
+    console.log(`✅ Received ${allProducts.length} total Amazon products across all brands.`);
     
-    await client.query('BEGIN');
-
+    // Use all fetched products
+    const products = allProducts;
+    
     // Clean existing data
     console.log('🧹 Clearing old data...');
-    await client.query('DELETE FROM smartphone_specs');
-    await client.query('DELETE FROM smartphones');
-    await client.query('DELETE FROM brands');
+    await prisma.smartphoneSpec.deleteMany({});
+    await prisma.smartphone.deleteMany({});
+    await prisma.brand.deleteMany({});
 
     // 2. Extract and insert unique brands
     console.log('🏢 Inserting brands...');
@@ -85,11 +108,12 @@ async function seedFromAPI() {
     
     for (const brandName of uniqueBrands) {
       const slug = generateSlug(brandName);
-      const res = await client.query(
-        `INSERT INTO brands (name, slug, country) VALUES ($1, $2, $3) ON CONFLICT(name) DO UPDATE SET name=EXCLUDED.name RETURNING id`,
-        [brandName, slug, 'Global']
-      );
-      brandMap[brandName] = res.rows[0].id;
+      const brand = await prisma.brand.upsert({
+        where: { name: brandName },
+        update: { name: brandName },
+        create: { name: brandName, slug, country: 'Global' },
+      });
+      brandMap[brandName] = brand.id;
     }
 
     // 3. Insert Smartphones and Specs
@@ -115,67 +139,46 @@ async function seedFromAPI() {
       const image = product.product_photo || product.thumbnail || null;
       
       try {
-        const phoneRes = await client.query(
-          `INSERT INTO smartphones (
-            brand_id, slug, name, model, price, original_price,
-            rating, review_count, image, gallery_images,
-            description, short_description, highlights,
-            availability, score_overall
-          ) VALUES (
-            $1, $2, $3, $4, $5, $6,
-            $7, $8, $9, $10,
-            $11, $12, $13,
-            $14, $15
-          ) RETURNING id`,
-          [
+        const phone = await prisma.smartphone.create({
+          data: {
             brandId, 
-            phoneSlug, 
-            title.substring(0, 190), // truncate if too long
-            title.substring(0, 190), 
+            slug: phoneSlug, 
+            name: title.substring(0, 190), // truncate if too long
+            model: title.substring(0, 190), 
             price, 
             originalPrice, 
             rating, 
             reviewCount, 
             image, 
-            [image].filter(Boolean),
-            title, 
-            title.substring(0, 100),
-            ['Amazon Best Seller'],
-            product.is_prime ? 'In Stock (Prime)' : 'In Stock',
-            Math.round(rating * 20) 
-          ]
-        );
-        
-        const phoneId = phoneRes.rows[0].id;
-        
-        await client.query(
-          `INSERT INTO smartphone_specs (
-            smartphone_id, processor, ram, storage, display_size, battery_capacity
-          ) VALUES ($1, $2, $3, $4, $5, $6)`,
-          [
-            phoneId,
-            'Octa-core Processor', 
-            8, 
-            128, 
-            '6.5 inches',
-            5000
-          ]
-        );
+            galleryImages: [image].filter(Boolean),
+            description: title, 
+            shortDescription: title.substring(0, 100),
+            highlights: ['Amazon Best Seller'],
+            availability: product.is_prime ? 'In Stock (Prime)' : 'In Stock',
+            scoreOverall: Math.round(rating * 20),
+            specs: {
+              create: {
+                processor: 'Octa-core Processor', 
+                ram: 8, 
+                storage: 128, 
+                displaySize: '6.5 inches',
+                batteryCapacity: 5000
+              }
+            }
+          }
+        });
         insertedCount++;
       } catch (err) {
         console.log(`Skipping product due to error: ${err.message}`);
       }
     }
 
-    await client.query('COMMIT');
     console.log(`\n🎉 Success! Inserted ${uniqueBrands.length} brands and ${insertedCount} Amazon smartphones.`);
 
   } catch (error) {
-    await client.query('ROLLBACK');
     console.error('\n❌ Seeding failed:', error.message);
   } finally {
-    client.release();
-    await pool.end();
+    await prisma.$disconnect();
   }
 }
 

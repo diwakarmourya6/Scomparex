@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const { pool } = require('../config/database');
+const { prisma } = require('../config/database');
 
 const protect = async (req, res, next) => {
   let token;
@@ -13,16 +13,28 @@ const protect = async (req, res, next) => {
       const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret');
 
       // Get user from the token (exclude password hash)
-      const result = await pool.query(
-        'SELECT id, name, email, role, created_at FROM users WHERE id = $1',
-        [decoded.id]
-      );
+      const user = await prisma.user.findUnique({
+        where: { id: parseInt(decoded.id, 10) },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          createdAt: true,
+        }
+      });
 
-      if (result.rows.length === 0) {
+      if (!user) {
         return res.status(401).json({ success: false, error: 'User not found' });
       }
 
-      req.user = result.rows[0];
+      req.user = {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        created_at: user.createdAt,
+      };
       next();
     } catch (error) {
       console.error('Auth middleware error:', error);

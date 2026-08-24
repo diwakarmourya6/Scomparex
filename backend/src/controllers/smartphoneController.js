@@ -177,11 +177,13 @@ module.exports = {
   deleteSmartphone: async (req, res, next) => {
     try {
       const { slug } = req.params;
-      const { pool } = require('../config/database');
+      const { prisma } = require('../config/database');
       
-      const result = await pool.query('DELETE FROM smartphones WHERE slug = $1 RETURNING id', [slug]);
+      const result = await prisma.smartphone.delete({
+        where: { slug }
+      }).catch(() => null);
       
-      if (result.rowCount === 0) {
+      if (!result) {
         return res.status(404).json({ success: false, error: 'Smartphone not found' });
       }
       

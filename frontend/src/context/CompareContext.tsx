@@ -46,8 +46,8 @@ export const CompareProvider: React.FC<{ children: React.ReactNode }> = ({ child
     } catch {
       // ignore
     }
-    // Default initial 2 phones for rich comparison experience
-    return ['iphone-16-pro-max', 'samsung-galaxy-s25-ultra'];
+    // Default initial phones empty so user can pick from the actual seeded DB
+    return [];
   });
 
   const [toasts, setToasts] = useState<ToastMessage[]>([]);

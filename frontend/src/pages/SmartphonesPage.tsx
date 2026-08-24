@@ -94,11 +94,11 @@ export const SmartphonesPage: React.FC<SmartphonesPageProps> = ({
       // 1. Search Query
       if (filters.searchQuery.trim()) {
         const q = filters.searchQuery.toLowerCase();
-        const matchesName = phone.name.toLowerCase().includes(q);
-        const matchesBrand = phone.brand.toLowerCase().includes(q);
-        const matchesProcessor = phone.performance.processor.toLowerCase().includes(q);
-        const matchesCamera = phone.camera.mainCamera.toLowerCase().includes(q);
-        const matchesFeatures = phone.highlights.some(h => h.toLowerCase().includes(q));
+        const matchesName = (phone.name || '').toLowerCase().includes(q);
+        const matchesBrand = (phone.brand || '').toLowerCase().includes(q);
+        const matchesProcessor = (phone.performance?.processor || '').toLowerCase().includes(q);
+        const matchesCamera = (phone.camera?.mainCamera || '').toLowerCase().includes(q);
+        const matchesFeatures = (phone.highlights || []).some(h => (h || '').toLowerCase().includes(q));
 
         if (!matchesName && !matchesBrand && !matchesProcessor && !matchesCamera && !matchesFeatures) {
           return false;
@@ -111,8 +111,11 @@ export const SmartphonesPage: React.FC<SmartphonesPageProps> = ({
       }
 
       // 3. Brands
-      if (filters.brands.length > 0 && !filters.brands.includes(phone.brand)) {
-        return false;
+      if (filters.brands.length > 0) {
+        const lowerBrands = filters.brands.map(b => b.toLowerCase());
+        if (!phone.brand || !lowerBrands.includes(phone.brand.toLowerCase())) {
+          return false;
+        }
       }
 
       // 4. RAM
@@ -132,24 +135,27 @@ export const SmartphonesPage: React.FC<SmartphonesPageProps> = ({
 
       // 7. Battery Min
       if (filters.batteryMin !== null) {
-        if (filters.batteryMin === 6000 && phone.battery.capacity < 6000) return false;
-        if (filters.batteryMin === 5000 && (phone.battery.capacity < 5000 || phone.battery.capacity >= 6000)) return false;
-        if (filters.batteryMin === 4000 && (phone.battery.capacity < 4000 || phone.battery.capacity >= 5000)) return false;
+        const cap = phone.battery?.capacity || 0;
+        if (filters.batteryMin === 6000 && cap < 6000) return false;
+        if (filters.batteryMin === 5000 && (cap < 5000 || cap >= 6000)) return false;
+        if (filters.batteryMin === 4000 && (cap < 4000 || cap >= 5000)) return false;
       }
 
       // 8. Camera Min MP
-      if (filters.cameraMinMP !== null && phone.camera.mainSensorMP < filters.cameraMinMP) {
-        return false;
+      if (filters.cameraMinMP !== null) {
+        const mp = phone.camera?.mainSensorMP || 0;
+        if (mp < filters.cameraMinMP) return false;
       }
 
       // 9. 5G only
-      if (filters.fiveGOnly && !phone.connectivity.fiveG) {
+      if (filters.fiveGOnly && !phone.connectivity?.fiveG) {
         return false;
       }
 
       // 10. Rating
-      if (filters.minRating !== null && phone.rating < filters.minRating) {
-        return false;
+      if (filters.minRating !== null) {
+        const rating = phone.rating || 0;
+        if (rating < filters.minRating) return false;
       }
 
       return true;

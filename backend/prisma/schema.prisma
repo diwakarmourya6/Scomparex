@@ -1,0 +1,166 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Brand {
+  id          Int          @id @default(autoincrement())
+  name        String       @unique @db.VarChar(100)
+  slug        String       @unique @db.VarChar(100)
+  logoUrl     String?      @map("logo_url")
+  country     String?      @db.VarChar(100)
+  createdAt   DateTime?    @default(now()) @map("created_at")
+  updatedAt   DateTime?    @default(now()) @map("updated_at")
+  smartphones Smartphone[]
+
+  @@map("brands")
+}
+
+model Smartphone {
+  id               Int       @id @default(autoincrement())
+  brandId          Int       @map("brand_id")
+  slug             String    @unique @db.VarChar(200)
+  name             String    @db.VarChar(200)
+  model            String    @db.VarChar(200)
+  price            Int
+  originalPrice    Int?      @map("original_price")
+  rating           Decimal   @default(0) @db.Decimal(2,1)
+  reviewCount      Int       @default(0) @map("review_count")
+  image            String?
+  galleryImages    String[]  @map("gallery_images")
+  description      String?
+  shortDescription String?   @map("short_description")
+  highlights       String[]
+  availability     String    @default("In Stock") @db.VarChar(50)
+  releaseDate      String?   @map("release_date") @db.VarChar(100)
+  bestFor          String?   @map("best_for")
+
+  scoreOverall     Int?      @map("score_overall") @db.SmallInt
+  scorePerformance Int?      @map("score_performance") @db.SmallInt
+  scoreCamera      Int?      @map("score_camera") @db.SmallInt
+  scoreBattery     Int?      @map("score_battery") @db.SmallInt
+  scoreDisplay     Int?      @map("score_display") @db.SmallInt
+  scoreValue       Int?      @map("score_value") @db.SmallInt
+
+  pros             String[]
+  cons             String[]
+
+  offers           Json?
+
+  createdAt        DateTime? @default(now()) @map("created_at")
+  updatedAt        DateTime? @default(now()) @map("updated_at")
+
+  brand            Brand     @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  specs            SmartphoneSpec?
+  favorites        Favorite[]
+
+  @@index([brandId])
+  @@index([slug])
+  @@index([price])
+  @@index([rating(sort: Desc)])
+  @@map("smartphones")
+}
+
+model SmartphoneSpec {
+  id                  Int       @id @default(autoincrement())
+  smartphoneId        Int       @unique @map("smartphone_id")
+
+  displaySize         String?   @map("display_size") @db.VarChar(50)
+  displaySizeNumber   Decimal?  @map("display_size_number") @db.Decimal(4,2)
+  displayType         String?   @map("display_type") @db.VarChar(200)
+  displayResolution   String?   @map("display_resolution") @db.VarChar(200)
+  refreshRate         Int?      @map("refresh_rate") @db.SmallInt
+  peakBrightness      Int?      @map("peak_brightness")
+  displayProtection   String?   @map("display_protection") @db.VarChar(200)
+  aspectRatio         String?   @map("aspect_ratio") @db.VarChar(20)
+  hdrSupport          String?   @map("hdr_support") @db.VarChar(200)
+
+  processor           String?   @db.VarChar(200)
+  cpu                 String?   @db.VarChar(300)
+  gpu                 String?   @db.VarChar(200)
+  ram                 Int?      @db.SmallInt
+  ramType             String?   @map("ram_type") @db.VarChar(50)
+  storage             Int?      @db.SmallInt
+  storageType         String?   @map("storage_type") @db.VarChar(50)
+  expandableStorage   Boolean?  @default(false) @map("expandable_storage")
+  antutuScore         Int?      @map("antutu_score")
+
+  mainCamera          String?   @map("main_camera") @db.VarChar(300)
+  mainSensorMp        Int?      @map("main_sensor_mp") @db.SmallInt
+  ultrawide           String?   @db.VarChar(300)
+  telephoto           String?   @db.VarChar(300)
+  telephotoMp         Int?      @map("telephoto_mp") @db.SmallInt
+  frontCamera         String?   @map("front_camera") @db.VarChar(300)
+  frontCameraMp       Int?      @map("front_camera_mp") @db.SmallInt
+  video               String?   @db.VarChar(300)
+  ois                 Boolean?  @default(false)
+  cameraFeatures      String[]  @map("camera_features")
+
+  batteryCapacity     Int?      @map("battery_capacity")
+  chargingSpeed       Int?      @map("charging_speed") @db.SmallInt
+  wirelessCharging    Boolean?  @default(false) @map("wireless_charging")
+  wirelessChargingSpeed Int?    @map("wireless_charging_speed") @db.SmallInt
+  reverseCharging     Boolean?  @default(false) @map("reverse_charging")
+  batteryLifeHours    Decimal?  @map("battery_life_hours") @db.Decimal(4,1)
+
+  fiveG               Boolean?  @default(false) @map("five_g")
+  wifi                String?   @db.VarChar(100)
+  bluetooth           String?   @db.VarChar(100)
+  nfc                 Boolean?  @default(false)
+  usb                 String?   @db.VarChar(200)
+  sim                 String?   @db.VarChar(200)
+
+  os                  String?   @db.VarChar(50)
+  osVersion           String?   @map("os_version") @db.VarChar(100)
+  updateSupportYears  Int?      @map("update_support_years") @db.SmallInt
+
+  weight              Int?      @db.SmallInt
+  dimensions          String?   @db.VarChar(100)
+  ipRating            String?   @map("ip_rating") @db.VarChar(100)
+  buildMaterials      String?   @map("build_materials") @db.VarChar(300)
+  colors              String[]
+
+  createdAt           DateTime? @default(now()) @map("created_at")
+  updatedAt           DateTime? @default(now()) @map("updated_at")
+
+  smartphone          Smartphone @relation(fields: [smartphoneId], references: [id], onDelete: Cascade)
+
+  @@index([smartphoneId])
+  @@map("smartphone_specs")
+}
+
+model User {
+  id           Int       @id @default(autoincrement())
+  name         String    @db.VarChar(200)
+  email        String    @unique @db.VarChar(200)
+  passwordHash String    @map("password_hash")
+  role         String    @default("user") @db.VarChar(50)
+  createdAt    DateTime? @default(now()) @map("created_at")
+  updatedAt    DateTime? @default(now()) @map("updated_at")
+
+  favorites    Favorite[]
+
+  @@map("users")
+}
+
+model Favorite {
+  id           Int        @id @default(autoincrement())
+  userId       Int        @map("user_id")
+  smartphoneId Int        @map("smartphone_id")
+  createdAt    DateTime?  @default(now()) @map("created_at")
+
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  smartphone   Smartphone @relation(fields: [smartphoneId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, smartphoneId])
+  @@map("favorites")
+}

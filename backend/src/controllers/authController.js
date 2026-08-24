@@ -1,6 +1,6 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { pool } = require('../config/database');
+const { prisma } = require('../config/database');
 
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET || 'fallback_secret', {
@@ -20,8 +20,10 @@ const registerUser = async (req, res, next) => {
     }
 
     // Check if user exists
-    const userExists = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
-    if (userExists.rows.length > 0) {
+    const userExists = await prisma.user.findUnique({
+      where: { email },
+    });
+    if (userExists) {
       return res.status(400).json({ success: false, error: 'User already exists' });
     }
 
@@ -30,16 +32,23 @@ const registerUser = async (req, res, next) => {
     const hashedPassword = await bcrypt.hash(password, salt);
 
     // Create user (first user defaults to admin for ease of setup, otherwise user)
-    const countRes = await pool.query('SELECT COUNT(*) FROM users');
-    const userCount = parseInt(countRes.rows[0].count);
+    const userCount = await prisma.user.count();
     const role = userCount === 0 ? 'admin' : 'user';
 
-    const newUser = await pool.query(
-      'INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, $3, $4) RETURNING id, name, email, role',
-      [name, email, hashedPassword, role]
-    );
-
-    const user = newUser.rows[0];
+    const user = await prisma.user.create({
+      data: {
+        name,
+        email,
+        passwordHash: hashedPassword,
+        role,
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+      }
+    });
 
     res.status(201).json({
       success: true,
@@ -64,10 +73,11 @@ const loginUser = async (req, res, next) => {
     const { email, password } = req.body;
 
     // Check for user email
-    const result = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
-    const user = result.rows[0];
+    const user = await prisma.user.findUnique({
+      where: { email },
+    });
 
-    if (user && (await bcrypt.compare(password, user.password_hash))) {
+    if (user && (await bcrypt.compare(password, user.passwordHash))) {
       res.json({
         success: true,
         data: {

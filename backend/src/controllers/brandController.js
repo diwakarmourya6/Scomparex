@@ -65,14 +65,14 @@ module.exports = {
   createBrand: async (req, res, next) => {
     try {
       const { name, slug, country } = req.body;
-      const { pool } = require('../config/database');
+      const { prisma } = require('../config/database');
       
-      const result = await pool.query(
-        'INSERT INTO brands (name, slug, country) VALUES ($1, $2, $3) RETURNING id, name, slug, country',
-        [name, slug, country]
-      );
+      const result = await prisma.brand.create({
+        data: { name, slug, country },
+        select: { id: true, name: true, slug: true, country: true }
+      });
       
-      res.status(201).json({ success: true, data: result.rows[0] });
+      res.status(201).json({ success: true, data: result });
     } catch (error) {
       next(error);
     }
@@ -82,18 +82,19 @@ module.exports = {
     try {
       const { name, country } = req.body;
       const { slug } = req.params;
-      const { pool } = require('../config/database');
+      const { prisma } = require('../config/database');
       
-      const result = await pool.query(
-        'UPDATE brands SET name = COALESCE($1, name), country = COALESCE($2, country) WHERE slug = $3 RETURNING id, name, slug, country',
-        [name, country, slug]
-      );
+      const result = await prisma.brand.update({
+        where: { slug },
+        data: { name, country },
+        select: { id: true, name: true, slug: true, country: true }
+      }).catch(() => null);
       
-      if (result.rowCount === 0) {
+      if (!result) {
         return res.status(404).json({ success: false, error: 'Brand not found' });
       }
       
-      res.json({ success: true, data: result.rows[0] });
+      res.json({ success: true, data: result });
     } catch (error) {
       next(error);
     }
@@ -102,11 +103,13 @@ module.exports = {
   deleteBrand: async (req, res, next) => {
     try {
       const { slug } = req.params;
-      const { pool } = require('../config/database');
+      const { prisma } = require('../config/database');
       
-      const result = await pool.query('DELETE FROM brands WHERE slug = $1 RETURNING id', [slug]);
+      const result = await prisma.brand.delete({
+        where: { slug }
+      }).catch(() => null);
       
-      if (result.rowCount === 0) {
+      if (!result) {
         return res.status(404).json({ success: false, error: 'Brand not found' });
       }
       

@@ -114,36 +114,36 @@ export const HomePage: React.FC<HomePageProps> = ({
     navigate('/compare');
   };
 
-  const popularBattles = [
+  const popularBattles = allPhones.length >= 8 ? [
     {
-      title: 'Titanium Flagship Clash',
+      title: 'Premium Flagship Clash',
       tag: 'Ultra Premium',
-      subtitle: 'Apple A18 Pro vs Snapdragon 8 Elite',
-      phone1: allPhones.find(p => p.id === 'iphone-16-pro-max')!,
-      phone2: allPhones.find(p => p.id === 'samsung-galaxy-s25-ultra')!
+      subtitle: `${allPhones[0].performance.processor.split('(')[0].trim()} vs ${allPhones[1].performance.processor.split('(')[0].trim()}`,
+      phone1: allPhones[0],
+      phone2: allPhones[1]
     },
     {
-      title: 'Flagship Killer Showdown',
+      title: 'Battery & Speed Showdown',
       tag: 'Speed & Charging',
-      subtitle: '100W vs 90W HyperCharge',
-      phone1: allPhones.find(p => p.id === 'oneplus-13')!,
-      phone2: allPhones.find(p => p.id === 'xiaomi-15-pro')!
+      subtitle: `${allPhones[2].battery.chargingSpeed}W vs ${allPhones[3].battery.chargingSpeed}W Fast Charging`,
+      phone1: allPhones[2],
+      phone2: allPhones[3]
     },
     {
-      title: 'Computational Camera Battle',
+      title: 'Camera Battle',
       tag: 'Best Imaging',
-      subtitle: 'Google Tensor G4 vs Zeiss Optics',
-      phone1: allPhones.find(p => p.id === 'google-pixel-9-pro')!,
-      phone2: allPhones.find(p => p.id === 'vivo-x100-pro')!
+      subtitle: `${allPhones[4].camera.mainSensorMP}MP vs ${allPhones[5].camera.mainSensorMP}MP Main Sensor`,
+      phone1: allPhones[4],
+      phone2: allPhones[5]
     },
     {
-      title: 'Midrange Value Face-Off',
-      tag: 'Under ₹40,000',
-      subtitle: 'Snapdragon 7+ Gen 3 vs Dimensity 7350 Pro',
-      phone1: allPhones.find(p => p.id === 'realme-gt-6')!,
-      phone2: allPhones.find(p => p.id === 'nothing-phone-2a-plus')!
+      title: 'Value Face-Off',
+      tag: 'Performance / Price',
+      subtitle: `Which offers better value?`,
+      phone1: allPhones[6],
+      phone2: allPhones[7]
     }
-  ].filter(b => Boolean(b.phone1 && b.phone2));
+  ] : [];
 
   return (
     <div className="space-y-16 sm:space-y-24 pb-20">

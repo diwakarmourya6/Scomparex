@@ -1,21 +1,19 @@
+const { PrismaClient } = require('@prisma/client');
 const { Pool } = require('pg');
+const { PrismaPg } = require('@prisma/adapter-pg');
 
-const pool = new Pool({
-  host: process.env.DB_HOST,
-  port: parseInt(process.env.DB_PORT, 10),
-  database: process.env.DB_NAME,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  ssl: process.env.DB_HOST.includes('render.com') ? { rejectUnauthorized: false } : false,
-  max: 20,
+const connectionString = process.env.DATABASE_URL;
+const pool = new Pool({ 
+  connectionString,
+  ssl: { rejectUnauthorized: false },
+  max: 10,
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 5000,
+  connectionTimeoutMillis: 10000,
+  keepAlive: true
 });
+const adapter = new PrismaPg(pool);
 
-pool.on('error', (err) => {
-  console.error('Unexpected error on idle PostgreSQL client', err);
-  process.exit(-1);
-});
+const prisma = new PrismaClient({ adapter });
 
 /**
  * Test the database connection.
@@ -23,15 +21,14 @@ pool.on('error', (err) => {
  */
 async function testConnection() {
   try {
-    const client = await pool.connect();
-    const result = await client.query('SELECT NOW() AS server_time');
-    client.release();
-    console.log(`✅ PostgreSQL connected — server time: ${result.rows[0].server_time}`);
+    // Simple query to verify connection
+    await prisma.$queryRaw`SELECT 1`;
+    console.log(`✅ Prisma PostgreSQL connected successfully.`);
     return true;
   } catch (err) {
-    console.error('❌ PostgreSQL connection failed:', err.message);
+    console.error('❌ Prisma PostgreSQL connection failed:', err.message);
     return false;
   }
 }
 
-module.exports = { pool, testConnection };
+module.exports = { prisma, testConnection };
