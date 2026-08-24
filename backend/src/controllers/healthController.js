@@ -6,21 +6,20 @@ const { prisma } = require('../config/database');
  */
 async function getHealth(_req, res) {
   let dbStatus = false;
-  let dbTime = null;
+  let dbError = null;
   let brandCount = null;
   let smartphoneCount = null;
 
   try {
-    const timeResult = await prisma.$queryRaw`SELECT NOW() AS server_time`;
-    dbTime = timeResult[0].server_time;
-    dbStatus = true;
-
-    // Also report record counts so you know the seed ran
+    // Prisma 7 driver adapters do not support $queryRaw — use ORM queries instead
     brandCount = await prisma.brand.count();
     smartphoneCount = await prisma.smartphone.count();
+    dbStatus = true;
   } catch (err) {
-    // DB is down or tables don't exist yet — that's fine, report it
+    // DB is down or tables don't exist yet — report it
+    dbError = err.message;
     console.error('Health check DB probe failed:', err.message);
+    console.error('DATABASE_URL set:', !!process.env.DATABASE_URL);
   }
 
   const uptime = process.uptime();
@@ -34,10 +33,11 @@ async function getHealth(_req, res) {
         environment: process.env.NODE_ENV || 'development',
         uptime: `${Math.floor(uptime / 60)}m ${Math.floor(uptime % 60)}s`,
         timestamp: new Date().toISOString(),
+        dbUrlSet: !!process.env.DATABASE_URL,
       },
       database: {
         connected: dbStatus,
-        serverTime: dbTime,
+        error: dbError,
         brands: brandCount,
         smartphones: smartphoneCount,
       },
