@@ -4,7 +4,7 @@
   "description": "CompareX Smartphone Comparison Backend API",
   "main": "src/server.js",
   "scripts": {
-    "start": "node src/server.js",
+    "start": "npx prisma generate && node src/server.js",
     "dev": "node --watch src/server.js",
     "generate": "npx prisma generate",
     "seed:api": "node database/seeds/002_seed_from_api.js",
@@ -27,11 +27,11 @@
     "helmet": "^8.0.0",
     "joi": "^17.13.3",
     "jsonwebtoken": "^9.0.3",
-    "pg": "^8.13.1"
+    "pg": "^8.13.1",
+    "prisma": "^7.9.1"
   },
   "devDependencies": {
     "jest": "^29.7.0",
-    "prisma": "^7.9.1",
     "supertest": "^7.0.0"
   }
 }
