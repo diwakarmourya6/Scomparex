@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "description": "End-to-End Testing",
   "scripts": {
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "build": "echo 'No build step for testing'"
   },
   "devDependencies": {
     "@playwright/test": "^1.42.0",
